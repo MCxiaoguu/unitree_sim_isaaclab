@@ -24,6 +24,8 @@ from . import move_cylinder_g1_29dof_inspire_wholebody
 
 from . import pick_place_redblock_g1_29dof_dex3_copy
 
+from . import press_knob_g1_29dof_dex3
+
 # export all modules
 __all__ = [
         "pick_place_cylinder_g1_29dof_dex3", "pick_place_cylinder_g1_29dof_dex1", 
@@ -37,5 +39,6 @@ __all__ = [
         "move_cylinder_g1_29dof_dex3_wholebody",
         "move_cylinder_g1_29dof_inspire_wholebody",
 
-        "pick_place_redblock_g1_29dof_dex3_copy"
+        "pick_place_redblock_g1_29dof_dex3_copy",
+        "press_knob_g1_29dof_dex3"
 ]
