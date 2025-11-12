@@ -90,26 +90,26 @@ class TableKnobSceneCfg(InteractiveSceneCfg): # inherit from the interactive sce
         ),
     )
     # Object
-    # 2. object configuration (cylinder)     
+    # 2. object configuration (pressable button/knob - simple height-based detection)
     object = RigidObjectCfg(
         prim_path="/World/envs/env_.*/Object",    # object in the scene
         init_state=RigidObjectCfg.InitialStateCfg(pos=[-0.35, 0.40, 0.84], # initial position (pos) 
                                                   rot=[1, 0, 0, 0]), # initial rotation (rot)
         spawn=sim_utils.CylinderCfg(
-            radius=0.018,    # cylinder radius (radius)
-            height=0.35,     # cylinder height (height)
+            radius=0.045,    # wider radius for button/knob appearance
+            height=0.025,    # shorter height for button-like shape
  
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
             ),    # rigid body properties configuration (rigid_props)
-            mass_props=sim_utils.MassPropertiesCfg(mass=0.4),    # mass properties configuration (mass)
+            mass_props=sim_utils.MassPropertiesCfg(mass=0.1),    # lighter mass for easier pressing
             collision_props=sim_utils.CollisionPropertiesCfg(),    # collision properties configuration (collision_props)
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.15, 0.15, 0.15), metallic=1.0),    # visual material configuration (visual_material)
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.9, 0.2, 0.2), metallic=0.4),    # bright red for visibility
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 friction_combine_mode="max",    # friction combine mode
                 restitution_combine_mode="min",    # restitution combine mode
-                static_friction=1.5,    # static friction coefficient
-                dynamic_friction=1.5,    # dynamic friction coefficient
-                restitution=0.0,    # restitution coefficient (no restitution)
+                static_friction=0.3,    # lower friction for easier sliding/pressing
+                dynamic_friction=0.3,    # lower friction coefficient
+                restitution=0.1,    # slight bounce back (spring-like behavior)
             ),
         ),
     )
