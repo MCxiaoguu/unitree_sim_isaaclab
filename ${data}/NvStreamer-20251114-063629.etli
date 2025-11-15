@@ -1,0 +1,46 @@
+1,MarkEtliVersion,TraceEventEtliVersion,v3,1763102189792
+248,MarkQosNameValue,GPU Detail,NVIDIA GeForce RTX 3070 Ti Laptop GPU (0x000024A0) Direct3D11 vs_5_0 ps_5_0
+248,MarkQosNameValue,SurfaceBitDepth,8
+248,MarkQosNameValue,AdapterWidth,1280
+248,MarkQosNameValue,AllTransitSelectionValuesForwarded,
+248,MarkQosNameValue,IsCoProc,0
+248,MarkQosNameValue,DriverBranch,NVIDIA UNIX x86_64 Kernel Module  570.195.03  Sat Sep 20 01:10:00 UTC 2025
+248,MarkQosNameValue,AdapterRefreshRate,60.0
+248,MarkQosNameValue,Device,NVIDIA RTX 6000 Ada Generation
+248,MarkQosNameValue,AdapterHeight,720
+248,MarkQosNameValue,TransitSelectionValueForwarded,0
+248,MarkQosNameValue,LtrEnabled,0
+248,MarkQosNameValue,EncoderInputSurfaceFormat,invalid_format
+248,MarkQosNameValue,AllTransitSelectionValuesApplied,
+248,MarkQosNameValue,TransitSelectionValueApplied,0
+248,MarkQosNameValue,DriverVersion,570.19
+248,MarkQosNameValue,DataChannelMode,DcSCTP
+248,MarkQos,StreamServerBackendMode is 2
+248,MarkQos,stream 0 nvtime::sessionStartTime[us] on server: 2385685854512
+248,MarkQos,RL QOS disabled for stream: 0
+248,MarkQos,Max Fps is 60
+248,MarkQos,NvRtcClient Browser name: Chromium, Browser version: 138.0.7204.97
+248,MarkQos,ClientGenericMapping: {ProcCpuUsage, TotalCpuUsage}
+248,MarkGsBlobStats,0x1B01000000000000010001001C01000000000000000000001B0100000000000000000100
+933,MarkQosServerControlChannelStatsV0,1129377636,0,785,2,117
+933,MarkQosServerControlChannelStatsV0,1129377636,0,797,1,5
+933,MarkQosServerControlChannelStatsV0,1129377636,0,798,1,1032
+933,MarkQosServerControlChannelStatsV0,1129377636,0,800,2,24
+933,MarkQosServerControlChannelStatsV0,1129377636,0,801,1,12
+934,MarkQosNameValue,StreamProfileType,Gaming_LAN
+934,MarkQosNameValue,RivermaxEnabled,0
+934,MarkQosNameValue,L4S Enabled (Upstream),0
+934,MarkQosNameValue,L4S Enabled (Downstream),0
+934,MarkQosNameValue,L4S Enabled for Video (Downstream),0
+934,MarkQosNameValue,L4S Enabled for Audio (Downstream),0
+934,MarkQosNameValue,Streaming Mode,2560x1440p60
+934,MarkQosNameValue,DVS P4VirtualChangelist,35560324
+934,MarkQosNameValue,DVS Branch,gcomp/rel/gs_04_72
+934,MarkQosNameValue,Format,H264
+934,MarkQosNameValue,HostName,U16-I3-D16-4-2
+934,MarkQosNameValue,Windows Version,non-Windows
+934,MarkQosNameValue,VideoEncoderClassId,0xC9B7
+934,MarkQosNameValue,Device,NVIDIA RTX 6000 Ada Generation
+934,MarkQos,Number of delayed commands: 0
+934,MarkQos,Audio drift stats - Ratio: 0.000000, Total Drift: 0 ms, Packet Count: 0
+934,MarkGsBlobStats,0x19010000000000000C0005F0BFF621F3501E85AA05000000000A0000A00500003C000000010000000000000002000000020000000F0000000F0000000F000000000000000000000000000027D502000100000001000000010000000D0000000000000000000000000000000000000000000000000000000000000000000000

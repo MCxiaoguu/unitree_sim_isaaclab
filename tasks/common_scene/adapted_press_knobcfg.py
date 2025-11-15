@@ -1,9 +1,16 @@
 # Copyright (c) 2025, Unitree Robotics Co., Ltd. All Rights Reserved.
 # License: Apache License, Version 2.0      
-#Adatped by Hanyang Gu for pressing knob task
+# Adapted by Hanyang Gu for pressing knob task
 """
-public base scene configuration module
-provides reusable scene element configurations, such as tables, objects, ground, lights, etc.
+Public base scene configuration module for button pressing task.
+
+SCENE OBJECTS:
+- object_0 (Red), object_1 (Green), object_2 (Blue), object_3 (Yellow)
+- All buttons: radius=0.045m, height=0.025m, mass=0.1kg
+
+This scene supports random button spawning (1-4 buttons) with collision avoidance.
+Button reset logic is implemented in task-specific mdp folder:
+    tasks/g1_tasks/press_knob_g1_29dof_dex3/mdp/button_reset_mdp.py
 """
 import isaaclab.sim as sim_utils
 from isaaclab.assets import  AssetBaseCfg, RigidObjectCfg
@@ -89,27 +96,88 @@ class TableKnobSceneCfg(InteractiveSceneCfg): # inherit from the interactive sce
             rigid_props=sim_utils.RigidBodyPropertiesCfg(kinematic_enabled=True),   
         ),
     )
-    # Object
-    # 2. object configuration (pressable button/knob - simple height-based detection)
-    object = RigidObjectCfg(
-        prim_path="/World/envs/env_.*/Object",    # object in the scene
-        init_state=RigidObjectCfg.InitialStateCfg(pos=[-0.35, 0.40, 0.84], # initial position (pos) 
-                                                  rot=[1, 0, 0, 0]), # initial rotation (rot)
+    # Objects - Define 4 buttons (maximum, will be randomly enabled 1-4 on reset)
+    # 2. button configurations (pressable buttons/knobs - simple height-based detection)
+    object_0 = RigidObjectCfg(
+        prim_path="/World/envs/env_.*/Object_0",
+        init_state=RigidObjectCfg.InitialStateCfg(pos=[-0.35, 0.40, 0.84],
+                                                  rot=[1, 0, 0, 0]),
         spawn=sim_utils.CylinderCfg(
-            radius=0.045,    # wider radius for button/knob appearance
-            height=0.025,    # shorter height for button-like shape
- 
-            rigid_props=sim_utils.RigidBodyPropertiesCfg(
-            ),    # rigid body properties configuration (rigid_props)
-            mass_props=sim_utils.MassPropertiesCfg(mass=0.1),    # lighter mass for easier pressing
-            collision_props=sim_utils.CollisionPropertiesCfg(),    # collision properties configuration (collision_props)
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.9, 0.2, 0.2), metallic=0.4),    # bright red for visibility
+            radius=0.045,
+            height=0.025,
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(),
+            mass_props=sim_utils.MassPropertiesCfg(mass=0.1),
+            collision_props=sim_utils.CollisionPropertiesCfg(),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.9, 0.2, 0.2), metallic=0.4),
             physics_material=sim_utils.RigidBodyMaterialCfg(
-                friction_combine_mode="max",    # friction combine mode
-                restitution_combine_mode="min",    # restitution combine mode
-                static_friction=0.3,    # lower friction for easier sliding/pressing
-                dynamic_friction=0.3,    # lower friction coefficient
-                restitution=0.1,    # slight bounce back (spring-like behavior)
+                friction_combine_mode="max",
+                restitution_combine_mode="min",
+                static_friction=0.3,
+                dynamic_friction=0.3,
+                restitution=0.1,
+            ),
+        ),
+    )
+    
+    object_1 = RigidObjectCfg(
+        prim_path="/World/envs/env_.*/Object_1",
+        init_state=RigidObjectCfg.InitialStateCfg(pos=[-0.20, 0.40, 0.84],
+                                                  rot=[1, 0, 0, 0]),
+        spawn=sim_utils.CylinderCfg(
+            radius=0.045,
+            height=0.025,
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(),
+            mass_props=sim_utils.MassPropertiesCfg(mass=0.1),
+            collision_props=sim_utils.CollisionPropertiesCfg(),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.2, 0.9, 0.2), metallic=0.4),  # green
+            physics_material=sim_utils.RigidBodyMaterialCfg(
+                friction_combine_mode="max",
+                restitution_combine_mode="min",
+                static_friction=0.3,
+                dynamic_friction=0.3,
+                restitution=0.1,
+            ),
+        ),
+    )
+    
+    object_2 = RigidObjectCfg(
+        prim_path="/World/envs/env_.*/Object_2",
+        init_state=RigidObjectCfg.InitialStateCfg(pos=[-0.05, 0.40, 0.84],
+                                                  rot=[1, 0, 0, 0]),
+        spawn=sim_utils.CylinderCfg(
+            radius=0.045,
+            height=0.025,
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(),
+            mass_props=sim_utils.MassPropertiesCfg(mass=0.1),
+            collision_props=sim_utils.CollisionPropertiesCfg(),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.2, 0.2, 0.9), metallic=0.4),  # blue
+            physics_material=sim_utils.RigidBodyMaterialCfg(
+                friction_combine_mode="max",
+                restitution_combine_mode="min",
+                static_friction=0.3,
+                dynamic_friction=0.3,
+                restitution=0.1,
+            ),
+        ),
+    )
+    
+    object_3 = RigidObjectCfg(
+        prim_path="/World/envs/env_.*/Object_3",
+        init_state=RigidObjectCfg.InitialStateCfg(pos=[0.10, 0.40, 0.84],
+                                                  rot=[1, 0, 0, 0]),
+        spawn=sim_utils.CylinderCfg(
+            radius=0.045,
+            height=0.025,
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(),
+            mass_props=sim_utils.MassPropertiesCfg(mass=0.1),
+            collision_props=sim_utils.CollisionPropertiesCfg(),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.9, 0.9, 0.2), metallic=0.4),  # yellow
+            physics_material=sim_utils.RigidBodyMaterialCfg(
+                friction_combine_mode="max",
+                restitution_combine_mode="min",
+                static_friction=0.3,
+                dynamic_friction=0.3,
+                restitution=0.1,
             ),
         ),
     )

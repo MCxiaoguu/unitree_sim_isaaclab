@@ -1,5 +1,26 @@
 # Copyright (c) 2025, Unitree Robotics Co., Ltd. All Rights Reserved.
 # License: Apache License, Version 2.0  
+"""
+Button Press Task Environment Configuration with Random Multi-Button Spawning
+
+RANDOM BUTTON SPAWNING:
+- On each reset, 1-4 buttons spawn randomly with collision avoidance
+- Scene objects: object_0 (red), object_1 (green), object_2 (blue), object_3 (yellow)
+- Inactive buttons are moved to [100, 100, -10] (far away from workspace)
+
+IMPORTANT - Current Limitations:
+- Reward function (compute_reward) expects single "object" - may need updates for multi-button
+- Termination function (reset_object_estimate) expects single "object" - may need updates
+- You may need to modify mdp/rewards.py and mdp/terminations.py to handle multiple buttons
+
+To customize button spawning, modify the reset_buttons_random parameters in __post_init__:
+- min_buttons/max_buttons: Control how many buttons spawn (1-4)
+- base_pos: Center of spawning area
+- position_randomization: Size of random spawn area (x, y, z offsets)
+- min_distance: Minimum spacing between buttons (default 0.12m)
+
+See mdp/button_reset_mdp.py for implementation details.
+"""
 
 import tempfile
 import torch
@@ -98,19 +119,16 @@ class RewardsCfg:
 
 @configclass
 class EventCfg:
-    reset_object = EventTermCfg(
-        func=mdp.reset_root_state_uniform,  # use uniform distribution reset function
-        mode="reset",   # set event mode to reset
+    # Random button spawning: spawns 1-4 buttons with collision avoidance on reset
+    reset_buttons_random = EventTermCfg(
+        func=mdp.reset_buttons_random,
+        mode="reset",
         params={
-            # position range parameter
-            "pose_range": {
-                "x": [-0.05, 0.05],  # x axis position range: -0.05 to 0.0 meter
-                "y": [-0.05, 0.05],   # y axis position range: 0.0 to 0.05 meter
-            },
-            # speed range parameter (empty dictionary means using default value)
-            "velocity_range": {},
-            # specify
-            "asset_cfg": SceneEntityCfg("object"),
+            "min_buttons": 1,        # Minimum number of buttons to spawn
+            "max_buttons": 4,        # Maximum number of buttons to spawn
+            "base_pos": (-0.35, 0.40, 0.84),  # Center of spawning area (on table)
+            "position_randomization": (0.15, 0.15, 0.0),  # Random offset range (x, y, z)
+            "min_distance": 0.12,    # Minimum spacing between buttons (meters)
         },
     )
 
@@ -155,16 +173,20 @@ class PressKnobG129DEX3JointEnvCfg(ManagerBasedRLEnvCfg):
         # create event manager
         self.event_manager = SimpleEventManager()
 
-        # register "reset object" event
-        self.event_manager.register("reset_object_self", SimpleEvent(
-            func=lambda env: base_mdp.reset_root_state_uniform(
+        # register random button spawning event (1-4 buttons with collision avoidance)
+        self.event_manager.register("reset_buttons_random_self", SimpleEvent(
+            func=lambda env: mdp.reset_buttons_random(
                 env,
                 torch.arange(env.num_envs, device=env.device),
-                pose_range={"x": [-0.05, 0.05], "y": [0.0, 0.05]},
-                velocity_range={},
-                asset_cfg=SceneEntityCfg("object"),
+                min_buttons=1,
+                max_buttons=4,
+                base_pos=(-0.35, 0.40, 0.84),
+                position_randomization=(0.15, 0.15, 0.0),
+                min_distance=0.12
             )
         ))
+        
+        # register reset all event (resets robot and scene to default)
         self.event_manager.register("reset_all_self", SimpleEvent(
             func=lambda env: base_mdp.reset_scene_to_default(
                 env,
