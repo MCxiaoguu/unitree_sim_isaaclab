@@ -49,7 +49,7 @@ def _get_rewards_dds_instance():
 
 def compute_reward(
     env: ManagerBasedRLEnv,
-    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+    object_cfg: SceneEntityCfg = SceneEntityCfg("object_0"),
     initial_height: float = 0.84,           # initial knob height (from scene config)
     press_threshold: float = 0.005,          # minimum press depth to count as pressed (5mm)
     target_press_depth: float = 0.015,       # optimal press depth for maximum reward (15mm)

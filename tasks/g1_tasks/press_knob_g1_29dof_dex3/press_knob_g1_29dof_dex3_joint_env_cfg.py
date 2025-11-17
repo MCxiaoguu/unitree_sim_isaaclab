@@ -108,10 +108,10 @@ class ObservationsCfg:
     # create policy observation group instance
     policy: PolicyCfg = PolicyCfg()
 
-@configclass
-class TerminationsCfg:
-    # check if the object is out of the working range
-    success = DoneTerm(func=mdp.reset_object_estimate)# use task completion check function
+# @configclass
+# class TerminationsCfg:
+#     # check if the object is out of the working range
+#     success = DoneTerm(func=mdp.reset_object_estimate)# use task completion check function
 
 @configclass
 class RewardsCfg:
