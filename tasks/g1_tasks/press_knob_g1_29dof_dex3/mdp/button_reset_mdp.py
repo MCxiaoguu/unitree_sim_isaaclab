@@ -5,14 +5,13 @@
 """Custom MDP functions for button reset with collision avoidance."""
 
 import torch
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from isaaclab.envs import ManagerBasedRLEnv
+from isaaclab.envs import ManagerBasedRLEnv
 
 __all__ = [
     "reset_buttons_random",
     "reset_buttons_to_default",
+    "reset_robot_only",
+    "reset_robot_and_buttons",
 ]
 
 
@@ -21,120 +20,176 @@ def reset_buttons_random(
     env_ids: torch.Tensor,
     min_buttons: int = 1,
     max_buttons: int = 4,
+    num_scene_buttons: int = 4,
     base_pos: tuple = (-0.35, 0.40, 0.84),
-    position_randomization: tuple = (0.15, 0.15, 0.0),  # randomization range for x, y, z
-    min_distance: float = 0.12,  # minimum distance between buttons (2x radius + safety margin)
+    position_randomization: tuple = (0.15, 0.15, 0.0),
+    min_distance: float = 0.12,
 ):
     """Reset button positions randomly with collision avoidance.
     
-    This function randomly spawns 1-4 buttons on each environment reset, with each button
-    placed at a random position that doesn't overlap with other buttons. Inactive buttons
-    (when fewer than 4 are spawned) are moved far away from the scene.
-    
-    Example:
-        If 2 buttons are selected:
-        - object_0 and object_1 get random positions within the spawn area
-        - object_2 and object_3 are moved to [100, 100, -10] (effectively disabled)
-    
-    Args:
-        env: The environment instance
-        env_ids: Environment IDs to reset (torch.Tensor of environment indices)
-        min_buttons: Minimum number of buttons to spawn (default: 1)
-        max_buttons: Maximum number of buttons to spawn (default: 4)
-        base_pos: Base position for button spawning area center (x, y, z)
-                  Default: (-0.35, 0.40, 0.84) - on the table surface
-        position_randomization: Randomization range for each axis (x, y, z)
-                                Buttons spawn within base_pos ± randomization
-                                Default: (0.15, 0.15, 0.0) - 30cm x 30cm area, no Z variation
-        min_distance: Minimum distance between button centers to avoid overlap (meters)
-                      Should be at least 2x button radius. Default: 0.12m (button radius=0.045m)
+    This function uses vectorized operations following Isaac Lab best practices.
     """
-    # Generate random number of buttons for each environment
+    
     num_envs = len(env_ids)
-    num_buttons = torch.randint(min_buttons, max_buttons + 1, (num_envs,), device=env.device)
     
-    # Get the button objects
+    # Generate random number of buttons for each environment
+    num_buttons_per_env = torch.randint(min_buttons, max_buttons + 1, (num_envs,), device=env.device)
+    print(f"env.scene: {env.scene}")
+    # Get all button objects
     button_objects = []
-    for i in range(max_buttons):
+    for i in range(num_scene_buttons):
         obj_name = f"object_{i}"
-        if hasattr(env.scene, obj_name):
-            button_objects.append(getattr(env.scene, obj_name))
-        else:
-            print(f"Warning: {obj_name} not found in scene")
-            return
+        if obj_name not in env.scene:
+            continue
+        button_objects.append(env.scene[obj_name])
     
-    # Process each environment individually
-    for idx, env_id in enumerate(env_ids):
-        n_buttons = num_buttons[idx].item()
-        
-        # === STEP 1: Generate collision-free positions for active buttons ===
-        positions = []  # Will store positions of successfully placed buttons
-        max_attempts = 100  # Retry limit per button to find valid position
-        
+    print(f"converting parameters to tensors")
+    # Convert parameters to tensors
+    base_pos_tensor = torch.tensor(base_pos, device=env.device, dtype=torch.float32)
+    pos_rand = torch.tensor(position_randomization, device=env.device, dtype=torch.float32)
+    
+    # Pre-allocate position tensors for all buttons and all environments
+    # Shape: (num_scene_buttons, num_envs, 3)
+    all_button_positions = torch.zeros((len(button_objects), num_envs, 3), device=env.device)
+    
+    # Generate positions for each environment (unfortunately can't fully vectorize collision check)
+    print(f"num_envs: {num_envs}")
+    for env_idx in range(num_envs):
+        print(f"Generating positions for env {env_idx}")
+        n_buttons = num_buttons_per_env[env_idx].item()
+        positions = []
+        max_attempts = 100
+        print(f"Number of buttons to place: {n_buttons}")
+        # Generate collision-free positions for active buttons
         for button_idx in range(n_buttons):
             placed = False
             
-            # Try to find a valid position that doesn't overlap with existing buttons
-            for attempt in range(max_attempts):
-                # Generate random offset from base position
-                # Range: base_pos ± position_randomization
-                rand_offset = torch.tensor([
-                    torch.rand(1).item() * 2 * position_randomization[0] - position_randomization[0],  # x offset
-                    torch.rand(1).item() * 2 * position_randomization[1] - position_randomization[1],  # y offset
-                    torch.rand(1).item() * 2 * position_randomization[2] - position_randomization[2]   # z offset
-                ], device=env.device)
+            for _ in range(max_attempts):
+                # Random offset: [-pos_rand, +pos_rand]
+                rand_offset = (torch.rand(3, device=env.device) * 2 - 1) * pos_rand
+                new_pos = base_pos_tensor + rand_offset
                 
-                new_pos = torch.tensor(base_pos, device=env.device) + rand_offset
-                
-                # Check if new position collides with any already-placed buttons
+                # Check collision with existing buttons (2D distance)
                 collision = False
                 for existing_pos in positions:
-                    # Calculate 2D distance (only x-y plane, ignore z)
                     distance = torch.norm(new_pos[:2] - existing_pos[:2])
                     if distance < min_distance:
                         collision = True
                         break
                 
-                # If no collision, accept this position
                 if not collision:
                     positions.append(new_pos)
                     placed = True
                     break
             
-            # Fallback: if we couldn't find valid position after max_attempts
-            # Place buttons in a line along x-axis with safe spacing
+            # Fallback position
             if not placed:
-                fallback_pos = torch.tensor(base_pos, device=env.device)
-                fallback_pos[0] += button_idx * 0.15  # 15cm spacing
+                fallback_pos = base_pos_tensor.clone()
+                fallback_pos[0] += button_idx * 0.15
                 positions.append(fallback_pos)
-                print(f"Warning: Button {button_idx} in env {env_id} placed using fallback position")
         
-        # === STEP 2: Set positions for all 4 button objects ===
-        for button_idx in range(max_buttons):
-            button = button_objects[button_idx]
-            
+        # Store positions for all buttons (active + inactive)
+        for button_idx in range(len(button_objects)):
             if button_idx < n_buttons:
-                # Active button - use the collision-free position we generated
-                pos = positions[button_idx]
+                all_button_positions[button_idx, env_idx] = positions[button_idx]
             else:
-                # Inactive button - move far away from the scene
-                # Position [100, 100, -10] is underground and far from workspace
-                # This effectively "disables" the button without removing it from simulation
-                pos = torch.tensor([100.0, 100.0, -10.0], device=env.device)
-            
-            # Construct the root state (position, rotation, velocities)
-            root_state = button.data.default_root_state[env_id].clone()
-            root_state[:3] = pos  # position (x, y, z)
-            root_state[3:7] = torch.tensor([1.0, 0.0, 0.0, 0.0], device=env.device)  # rotation (identity quaternion)
-            root_state[7:] = 0.0  # zero linear and angular velocities
-            
-            # Apply the state to the simulation
-            button.write_root_state_to_sim(root_state.unsqueeze(0), env_ids=torch.tensor([env_id], device=env.device))
+                # Inactive button - move far away
+                all_button_positions[button_idx, env_idx] = torch.tensor(
+                    [100.0, 100.0, -10.0], device=env.device
+                )
     
-    # Print info for first environment (for debugging)
-    if 0 in env_ids:
-        print(f"Reset buttons: spawned {num_buttons[0].item()} buttons in environment 0")
+    # Now apply all positions at once for each button (vectorized across environments)
+    identity_quat = torch.tensor([1.0, 0.0, 0.0, 0.0], device=env.device)
+    zero_vel = torch.zeros(6, device=env.device)
+    
+    for button_idx, button in enumerate(button_objects):
+        # Get positions for this button across all environments
+        positions = all_button_positions[button_idx]  # Shape: (num_envs, 3)
+        
+        # Create orientations (identity quaternion for all envs)
+        orientations = identity_quat.unsqueeze(0).repeat(num_envs, 1)
+        
+        # Combine position + orientation
+        poses = torch.cat([positions, orientations], dim=-1)  # Shape: (num_envs, 7)
+        
+        # Create velocities (zero for all envs)
+        velocities = zero_vel.unsqueeze(0).repeat(num_envs, 1)  # Shape: (num_envs, 6)
+        
+        # Write to simulation - VECTORIZED for all environments at once
+        button.write_root_pose_to_sim(poses, env_ids=env_ids)
+        button.write_root_velocity_to_sim(velocities, env_ids=env_ids)
+    
+    print(f"[Button Reset] Randomized buttons for {num_envs} environments")
 
+
+def reset_robot_only(
+    env: "ManagerBasedRLEnv",
+    env_ids: torch.Tensor,
+):
+    """Reset only the robot to default pose, leaving buttons untouched.
+    
+    Uses Isaac Lab's vectorized approach for efficiency.
+    """
+    
+    if "robot" not in env.scene:
+        print("[Robot Reset] ERROR: 'robot' not found in scene")
+        return
+    
+    robot = env.scene["robot"]
+    
+    # Get default states for all environments at once (vectorized)
+    joint_pos = robot.data.default_joint_pos[env_ids].clone()
+    joint_vel = robot.data.default_joint_vel[env_ids].clone()
+    
+    # Write to simulation (vectorized)
+    robot.write_joint_state_to_sim(joint_pos, joint_vel, env_ids=env_ids)
+    
+    # Reset root state if robot has one (vectorized)
+    if hasattr(robot.data, 'default_root_state'):
+        try:
+            # Get default root state for all envs
+            root_states = robot.data.default_root_state[env_ids].clone()
+            
+            # Split into pose and velocity
+            poses = root_states[:, :7]  # position (3) + orientation (4)
+            velocities = root_states[:, 7:13]  # linear (3) + angular (3)
+            
+            # Write to simulation (vectorized)
+            robot.write_root_pose_to_sim(poses, env_ids=env_ids)
+            robot.write_root_velocity_to_sim(velocities, env_ids=env_ids)
+        except Exception as e:
+            print(f"[Robot Reset] Could not reset root state: {e}")
+    
+    print(f"[Robot Reset] Reset robot for {len(env_ids)} environments")
+
+
+def reset_robot_and_buttons(
+    env: "ManagerBasedRLEnv",
+    env_ids: torch.Tensor,
+    min_buttons: int = 1,
+    max_buttons: int = 4,
+    base_pos: tuple = (-0.35, 0.40, 0.84),
+    position_randomization: tuple = (0.15, 0.15, 0.0),
+    min_distance: float = 0.12,
+):
+    """Reset both robot and buttons (full reset).
+    
+    This is a convenience function that calls both reset functions.
+    """
+    # First reset robot
+    reset_robot_only(env, env_ids)
+    
+    # Then randomize buttons
+    reset_buttons_random(
+        env, env_ids,
+        min_buttons=min_buttons,
+        max_buttons=max_buttons,
+        base_pos=base_pos,
+        position_randomization=position_randomization,
+        min_distance=min_distance
+    )
+    
+    print(f"[Full Reset] Reset robot and randomized buttons")
 
 def reset_buttons_to_default(
     env: "ManagerBasedRLEnv",
@@ -150,8 +205,9 @@ def reset_buttons_to_default(
     """
     for i in range(num_buttons):
         obj_name = f"object_{i}"
-        if hasattr(env.scene, obj_name):
-            button = getattr(env.scene, obj_name)
-            # Reset to default state
+        if obj_name in env.scene:
+            button = env.scene[obj_name]
             default_state = button.data.default_root_state[env_ids].clone()
             button.write_root_state_to_sim(default_state, env_ids=env_ids)
+    
+    print(f"[Button Reset] All buttons reset to default positions")

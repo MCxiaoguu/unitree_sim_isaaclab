@@ -105,9 +105,16 @@ class TableKnobSceneCfg(InteractiveSceneCfg): # inherit from the interactive sce
         spawn=sim_utils.CylinderCfg(
             radius=0.045,
             height=0.025,
-            rigid_props=sim_utils.RigidBodyPropertiesCfg(),
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(
+                disable_gravity=False,
+                retain_accelerations=False
+            ),
             mass_props=sim_utils.MassPropertiesCfg(mass=0.1),
-            collision_props=sim_utils.CollisionPropertiesCfg(),
+            collision_props=sim_utils.CollisionPropertiesCfg(
+                collision_enabled=True,
+                contact_offset=0.01,
+                rest_offset=0.0
+            ),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.9, 0.2, 0.2), metallic=0.4),
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 friction_combine_mode="max",
@@ -126,9 +133,16 @@ class TableKnobSceneCfg(InteractiveSceneCfg): # inherit from the interactive sce
         spawn=sim_utils.CylinderCfg(
             radius=0.045,
             height=0.025,
-            rigid_props=sim_utils.RigidBodyPropertiesCfg(),
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(
+                disable_gravity=False,
+                retain_accelerations=False
+            ),
             mass_props=sim_utils.MassPropertiesCfg(mass=0.1),
-            collision_props=sim_utils.CollisionPropertiesCfg(),
+            collision_props=sim_utils.CollisionPropertiesCfg(
+                collision_enabled=True,
+                contact_offset=0.01,
+                rest_offset=0.0
+            ),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.2, 0.9, 0.2), metallic=0.4),  # green
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 friction_combine_mode="max",
@@ -147,9 +161,16 @@ class TableKnobSceneCfg(InteractiveSceneCfg): # inherit from the interactive sce
         spawn=sim_utils.CylinderCfg(
             radius=0.045,
             height=0.025,
-            rigid_props=sim_utils.RigidBodyPropertiesCfg(),
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(
+                disable_gravity=False,
+                retain_accelerations=False
+            ),
             mass_props=sim_utils.MassPropertiesCfg(mass=0.1),
-            collision_props=sim_utils.CollisionPropertiesCfg(),
+            collision_props=sim_utils.CollisionPropertiesCfg(
+                collision_enabled=True,
+                contact_offset=0.01,
+                rest_offset=0.0
+            ),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.2, 0.2, 0.9), metallic=0.4),  # blue
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 friction_combine_mode="max",
@@ -168,9 +189,16 @@ class TableKnobSceneCfg(InteractiveSceneCfg): # inherit from the interactive sce
         spawn=sim_utils.CylinderCfg(
             radius=0.045,
             height=0.025,
-            rigid_props=sim_utils.RigidBodyPropertiesCfg(),
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(
+                disable_gravity=False,
+                retain_accelerations=False
+            ),
             mass_props=sim_utils.MassPropertiesCfg(mass=0.1),
-            collision_props=sim_utils.CollisionPropertiesCfg(),
+            collision_props=sim_utils.CollisionPropertiesCfg(
+                collision_enabled=True,
+                contact_offset=0.01,
+                rest_offset=0.0
+            ),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.9, 0.9, 0.2), metallic=0.4),  # yellow
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 friction_combine_mode="max",

@@ -108,30 +108,27 @@ class ObservationsCfg:
     # create policy observation group instance
     policy: PolicyCfg = PolicyCfg()
 
+# @configclass
+# class TerminationsCfg:
+#     # check if the object is out of the working range
+#     # success = DoneTerm(func=mdp.reset_object_estimate)# use task completion check function
+#     success = DoneTerm(func=lambda env: False)
 @configclass
 class TerminationsCfg:
-    # check if the object is out of the working range
-    # success = DoneTerm(func=mdp.reset_object_estimate)# use task completion check function
-    success = DoneTerm(func=lambda env: False)
+    # Disable termination check for now since you have multiple buttons
+    success = DoneTerm(func=lambda env: torch.zeros(env.num_envs, dtype=torch.bool, device=env.device))
 
+    
 @configclass
 class RewardsCfg:
     reward = RewTerm(func=mdp.compute_reward,weight=1.0)
 
 @configclass
 class EventCfg:
-    # Random button spawning: spawns 1-4 buttons with collision avoidance on reset
-    reset_buttons_random = EventTermCfg(
-        func=mdp.reset_buttons_random,
-        mode="reset",
-        params={
-            "min_buttons": 1,        # Minimum number of buttons to spawn
-            "max_buttons": 4,        # Maximum number of buttons to spawn
-            "base_pos": (-0.35, 0.40, 0.84),  # Center of spawning area (on table)
-            "position_randomization": (0.15, 0.15, 0.0),  # Random offset range (x, y, z)
-            "min_distance": 0.12,    # Minimum spacing between buttons (meters)
-        },
-    )
+    # NOTE: EventTermCfg with mode="reset" causes physics tensor invalidation during teleop
+    # Button randomization is handled via custom event_manager in __post_init__
+    # and triggered explicitly via DDS commands from sim_main.py (not via Isaac Lab's native reset)
+    pass
 
 
 @configclass
@@ -149,7 +146,6 @@ class PressKnobG129DEX3JointEnvCfg(ManagerBasedRLEnvCfg):
     observations: ObservationsCfg = ObservationsCfg()   # observation configuration
     actions: ActionsCfg = ActionsCfg()                  # action configuration
     # MDP settings
-    # 3. MDP settings
     terminations: TerminationsCfg = TerminationsCfg()    # termination configuration
     events = EventCfg()                                  # event configuration
     commands = None # command manager
@@ -168,28 +164,35 @@ class PressKnobG129DEX3JointEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.physx.gpu_total_aggregate_pairs_capacity = 16 * 1024
         self.sim.physx.friction_correlation_distance = 0.00625
 
-
-
-
-        # create event manager
+        # Create event manager for external DDS-triggered resets
         self.event_manager = SimpleEventManager()
 
-        # register random button spawning event (1-4 buttons with collision avoidance)
-        self.event_manager.register("reset_buttons_random_self", SimpleEvent(
+        # Register "reset_object_self" - Only randomize buttons (robot stays in place)
+        # Triggered by DDS reset_category='1'
+        self.event_manager.register("reset_object_self", SimpleEvent(
             func=lambda env: mdp.reset_buttons_random(
                 env,
                 torch.arange(env.num_envs, device=env.device),
                 min_buttons=1,
-                max_buttons=4,
+                max_buttons=2,
+                num_scene_buttons=4,
                 base_pos=(-0.35, 0.40, 0.84),
                 position_randomization=(0.15, 0.15, 0.0),
                 min_distance=0.12
             )
         ))
         
-        # register reset all event (resets robot and scene to default)
+        # Register "reset_all_self" - Reset robot AND randomize buttons (full reset)
+        # Triggered by DDS reset_category='2'
         self.event_manager.register("reset_all_self", SimpleEvent(
-            func=lambda env: base_mdp.reset_scene_to_default(
+            func=lambda env: mdp.reset_robot_and_buttons(
                 env,
-                torch.arange(env.num_envs, device=env.device))
+                torch.arange(env.num_envs, device=env.device),
+                min_buttons=1,
+                max_buttons=2,
+                num_scene_buttons=4,
+                base_pos=(-0.35, 0.40, 0.84),
+                position_randomization=(0.15, 0.15, 0.0),
+                min_distance=0.12
+            )
         ))
