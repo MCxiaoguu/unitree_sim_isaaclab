@@ -174,7 +174,7 @@ class PressKnobG129DEX3JointEnvCfg(ManagerBasedRLEnvCfg):
                 env,
                 torch.arange(env.num_envs, device=env.device),
                 min_buttons=1,
-                max_buttons=2,
+                max_buttons=4,
                 base_pos=(-0.35, 0.40, 0.84),
                 position_randomization=(0.15, 0.15, 0.0),
                 min_distance=0.12
@@ -188,7 +188,7 @@ class PressKnobG129DEX3JointEnvCfg(ManagerBasedRLEnvCfg):
                 env,
                 torch.arange(env.num_envs, device=env.device),
                 min_buttons=1,
-                max_buttons=2,
+                max_buttons=4,
                 base_pos=(-0.35, 0.40, 0.84),
                 position_randomization=(0.15, 0.15, 0.0),
                 min_distance=0.12
