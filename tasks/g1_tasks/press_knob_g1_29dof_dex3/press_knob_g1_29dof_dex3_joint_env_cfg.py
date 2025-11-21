@@ -121,8 +121,17 @@ class TerminationsCfg:
     
 @configclass
 class RewardsCfg:
-    reward = RewTerm(func=mdp.compute_reward,weight=1.0)
-
+    # We explicitly pass params here so we don't rely on defaults in the function
+    reward = RewTerm(
+        func=mdp.compute_reward,
+        weight=1.0,
+        params={
+            "hand_side": "left",     # Change to "right" if using right hand
+            "touch_tolerance": 0.05,
+            "max_buttons": 4         # MUST match the number of object_X prims in your scene
+        }
+    )
+    
 @configclass
 class EventCfg:
     # NOTE: EventTermCfg with mode="reset" causes physics tensor invalidation during teleop

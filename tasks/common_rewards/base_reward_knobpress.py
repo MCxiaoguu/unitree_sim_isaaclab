@@ -1,171 +1,104 @@
 # Copyright (c) 2025, Unitree Robotics Co., Ltd. All Rights Reserved.
-# License: Apache License, Version 2.0      
-from __future__ import annotations
+# License: Apache License, Version 2.0
 
+from __future__ import annotations
 import torch
-from typing import TYPE_CHECKING
-import sys
-import os
-from isaaclab.assets import RigidObject
 from isaaclab.managers import SceneEntityCfg
-if TYPE_CHECKING:
-    from isaaclab.envs import ManagerBasedRLEnv
-# global variable to cache the DDS instance
-_rewards_dds = None
-_dds_initialized = False
-import sys
-import os
-def _get_rewards_dds_instance():
-    """get the DDS instance, delay initialization"""
-    global _rewards_dds, _dds_initialized
-    
-    if not _dds_initialized or _rewards_dds is None:
-        try:
-            # dynamically import the DDS module
-            sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dds'))
-            from dds.dds_master import dds_manager
-            
-            _rewards_dds = dds_manager.get_object("rewards")
-            print("[Observations Rewards] DDS communication instance obtained")
-            
-            # register the cleanup function
-            import atexit
-            def cleanup_dds():
-                try:
-                    if _rewards_dds:
-                        dds_manager.unregister_object("rewards")
-                        print("[rewards_dds] DDS communication closed correctly")
-                except Exception as e:
-                    print(f"[rewards_dds] Error closing DDS: {e}")
-            atexit.register(cleanup_dds)
-            
-        except Exception as e:
-            print(f"[Observations Rewards] Failed to get DDS instances: {e}")
-            _rewards_dds = None
-        
-        _dds_initialized = True
-    
-    return _rewards_dds
+from isaaclab.envs import ManagerBasedRLEnv
 
 def compute_reward(
     env: ManagerBasedRLEnv,
-    initial_height: float = 0.84,           # initial knob height (from scene config)
-    press_threshold: float = 0.005,          # minimum press depth to count as pressed (5mm)
-    target_press_depth: float = 0.015,       # optimal press depth for maximum reward (15mm)
-    max_press_depth: float = 0.03,           # maximum allowable press depth (30mm)
-    position_tolerance: float = 0.05,        # XY position tolerance from initial position
-    initial_x: float = -0.35,                # initial X position from scene config
-    initial_y: float = 0.40,                 # initial Y position from scene config
-    max_buttons: int = 4,                    # maximum number of buttons in scene
+    object_name: str = "object_0",   # Argument kept for config compatibility, but effectively ignored
+    hand_side: str = "left",         # "left" or "right"
+    touch_tolerance: float = 0.01,   # 1cm tolerance
+    max_buttons: int = 4,            # Must match max buttons in scene
 ) -> torch.Tensor:
-    """Compute reward for knob pressing task based on height-based detection.
-    
-    Supports 1-4 buttons dynamically. Only computes rewards for buttons that are
-    within the active zone (z > 0.5). Buttons moved far away are ignored.
-    
-    Reward structure:
-    - Negative reward if knob moves too far in XY plane (not a valid press)
-    - Zero reward if not pressed enough
-    - Positive reward proportional to press depth up to target depth
-    - Maximum reward at target press depth
-    - Reduced reward if pressed beyond target (too hard)
     """
-    #TODO: get robot hand and calculate the distance between finger and knob.
-    return torch.zeros(env.num_envs, device=env.device, dtype=torch.float)
-
-    # Handle reward interval caching
-    # interval = getattr(env, "_reward_interval", 1) or 1
-    # counter = getattr(env, "_reward_counter", 0)
-    # last = getattr(env, "_reward_last", None)
-    # if interval > 1 and last is not None and counter % interval != 0:
-    #     env._reward_counter = counter + 1
-    #     return last
-
-    # # Initialize reward tensor
-    # reward = torch.zeros(env.num_envs, device=env.device, dtype=torch.float)
+    Compute reward for touching the randomly selected TARGET button.
     
-    # # Check all possible buttons (object_0 through object_3)
-    # for i in range(max_buttons):
-    #     obj_name = f"object_{i}"
+    This function:
+    1. Finds the correct index finger (Dex3 supported).
+    2. Retrieves the current target index from env.target_button_indices.
+    3. Looks up the position of that specific target button.
+    4. Returns 1.0 if touching, 0.0 otherwise.
+    """
+    
+    # --- 1. Get Robot and Cache Finger Index ---
+    try:
+        robot = env.scene["robot"]
+    except KeyError:
+        return torch.zeros(env.num_envs, device=env.device)
+
+    # Lazy Index Lookup (Runs once per session)
+    cache_key = f"_cache_idx_{hand_side}_dex3_finger"
+    body_names = robot.data.body_names
+    
+    # Candidates for G1 / Dex3 finger tip
+    
+    name = f"{hand_side}_hand_index_1_link"
+    finger_idx = None
+    finger_idx = body_names.index(name)
+    print(f"[Rewards] Found finger link: '{name}' at index {finger_idx}")
+    
+    if finger_idx is None:
+        print(f"[Rewards] WARNING: Finger link not found in {body_names}. Reward will be 0.")
+        return torch.zeros(env.num_envs, device=env.device)
         
-    #     # Skip if this button doesn't exist in the scene
-    #     if obj_name not in env.scene:
-    #         continue
-        
-    #     try:
-    #         # Safe access by iterating keys
-    #         object = None
-    #         if hasattr(env.scene, "items"):
-    #             for key, val in env.scene.items():
-    #                 if key == obj_name:
-    #                     object = val
-    #                     break
-            
-    #         if object is None and obj_name in env.scene:
-    #             object = env.scene[obj_name]
-                
-    #         if object is None:
-    #             continue
+    setattr(env, cache_key, finger_idx)
 
-    #         # Get current object position
-    #         knob_x = object.data.root_pos_w[:, 0]      # x position
-    #         knob_y = object.data.root_pos_w[:, 1]      # y position
-    #         knob_height = object.data.root_pos_w[:, 2] # z position (height)
-            
-    #         # Skip buttons that are far away (inactive buttons at z=-10)
-    #         active_buttons = knob_height > 0.5
-    #         if not active_buttons.any():
-    #             continue
-            
-    #         # 3. Calculate press depth (how much the knob moved down)
-    #         press_depth = initial_height - knob_height
-            
-    #         # 4. Calculate XY displacement from initial position
-    #         x_displacement = torch.abs(knob_x - initial_x)
-    #         y_displacement = torch.abs(knob_y - initial_y)
-    #         xy_displaced = (x_displacement > position_tolerance) | (y_displacement > position_tolerance)
-            
-    #         # 5. Apply reward logic for this button (only for active environments)
-    #         button_reward = torch.zeros(env.num_envs, device=env.device, dtype=torch.float)
-            
-    #         # Case 1: Knob moved too far in XY (fell off or pushed aside) - negative reward
-    #         button_reward[xy_displaced & active_buttons] = -1.0
-            
-    #         # Case 2: Not pressed enough - zero reward (already initialized to 0)
-            
-    #         # Case 3: Pressed within valid range - positive reward
-    #         pressed = (press_depth >= press_threshold) & (press_depth <= max_press_depth) & ~xy_displaced & active_buttons
-            
-    #         # Sub-case 3a: Pressed up to target depth - linearly increasing reward
-    #         good_press = pressed & (press_depth <= target_press_depth)
-    #         button_reward[good_press] = (press_depth[good_press] - press_threshold) / (target_press_depth - press_threshold)
-            
-    #         # Sub-case 3b: At or near target depth - maximum reward
-    #         optimal_press = pressed & (press_depth >= target_press_depth) & (press_depth <= target_press_depth + 0.005)
-    #         button_reward[optimal_press] = 1.0
-            
-    #         # Sub-case 3c: Pressed beyond target (too hard) - reduced reward
-    #         over_press = pressed & (press_depth > target_press_depth + 0.005)
-    #         button_reward[over_press] = 1.0 - 0.5 * ((press_depth[over_press] - target_press_depth) / (max_press_depth - target_press_depth))
-            
-    #         # Case 4: Pressed too hard (beyond max depth) - negative reward
-    #         too_hard = (press_depth > max_press_depth) & ~xy_displaced & active_buttons
-    #         button_reward[too_hard] = -0.5
-            
-    #         # Accumulate rewards from all active buttons (take max reward across buttons)
-    #         reward = torch.maximum(reward, button_reward)
-            
-    #     except Exception as e:
-    #         # Silently skip buttons that cause errors (e.g., during reset)
-    #         pass
+    # Get Finger Position
+    finger_idx = getattr(env, cache_key)
+    # shape: (num_envs, 3)
+    finger_pos = robot.data.body_link_pose_w[:, finger_idx, :3]
 
-    # # Cache reward for interval optimization
-    # env._reward_last = reward
-    # env._reward_counter = counter + 1
+
+    # --- 2. Get Target Button Position ---
     
-    # # Send reward data via DDS if available
-    # rewards_dds = _get_rewards_dds_instance()
-    # if rewards_dds:
-    #     rewards_dds.write_rewards_data(reward)
+    # If targets haven't been set yet (e.g. before first reset), return 0
+    if not hasattr(env, "target_button_indices"):
+        return torch.zeros(env.num_envs, device=env.device)
     
-    # return reward
+    target_indices = env.target_button_indices  # Shape: (num_envs,)
+
+    # Gather positions of all objects (object_0 to object_N)
+    # We create a stack of shape: (num_envs, max_buttons, 3)
+    all_obj_positions_list = []
+    
+    for i in range(max_buttons):
+        obj_key = f"object_{i}"
+        try:
+            if obj_key in env.scene.keys():
+                # Get real position
+                pos = env.scene[obj_key].data.root_pos_w[:, :3]
+                all_obj_positions_list.append(pos)
+            else:
+                # Object defined in logic but not in scene? Use dummy far pos
+                dummy = torch.zeros_like(finger_pos) + 100.0
+                all_obj_positions_list.append(dummy)
+        except Exception:
+            dummy = torch.zeros_like(finger_pos) + 100.0
+            all_obj_positions_list.append(dummy)
+
+    # Stack: (num_envs, max_buttons, 3)
+    all_obj_positions_stack = torch.stack(all_obj_positions_list, dim=1)
+
+    # Select the specific target position for each environment
+    # We need to expand indices to match dimensions for torch.gather
+    # target_indices: (num_envs,) -> (num_envs, 1, 3)
+    target_indices_expanded = target_indices.view(-1, 1, 1).expand(-1, 1, 3)
+    
+    # Gather: result is (num_envs, 1, 3)
+    target_button_pos_grouped = torch.gather(all_obj_positions_stack, 1, target_indices_expanded)
+    
+    # Squeeze to (num_envs, 3)
+    target_button_pos = target_button_pos_grouped.squeeze(1)
+
+
+    # --- 3. Calculate Distance and Reward ---
+    
+    distance = torch.norm(finger_pos - target_button_pos, dim=1)
+    
+    # Binary reward: 1.0 if within tolerance, else 0.0
+    reward = (distance < touch_tolerance).float()
+    
+    return reward
